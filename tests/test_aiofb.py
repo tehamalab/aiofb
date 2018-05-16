@@ -6,7 +6,7 @@
 import pytest
 
 
-from aiofb import api
+from aiofb import api  # noqa
 
 
 @pytest.fixture

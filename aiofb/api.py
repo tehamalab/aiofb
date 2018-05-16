@@ -1,118 +1,173 @@
-import logging
-import asyncio
 import aiohttp
 import async_timeout
+from .exceptions import GraphAPIException
 
 
-class Graph(object):
+class GraphAPI:
+    """A Facebook Graph API wrapper.
 
-    def __init__(self, access_token=None, version='2.10', url='https://graph.facebook.com',
-                 async_timeout=10):
-        self.access_token = access_token
-        self.version = version
-        self.url = '{0}/v{1}'.format(url, self.version)
-        self.default_http_headers = {'Content-Type': 'application/json'}
-        self.async_timeout = async_timeout
+    https://developers.facebook.com/docs/graph-api/
+    """
 
-    async def get(self, session, path, params=None, data=None, json_data=None, **kwargs):
-        headers = self.default_http_headers.copy()
-        headers.update(kwargs.pop('headers', {}))
-        with async_timeout.timeout(self.async_timeout):
-            return await session.get(self.url + path, params=params, data=data,
-                                     json=json_data, headers=headers)
+    ROOT_URL = 'https://graph.facebook.com'
+    VERSION = '3.0'
+    URL = '{0}/v{1}'.format(ROOT_URL, VERSION)
 
-    async def post(self, session, path, params=None, data=None, json_data=None, **kwargs):
-        headers = self.default_http_headers.copy()
-        headers.update(kwargs.pop('headers', {}))
-        with async_timeout.timeout(self.async_timeout):
-            return await session.post(self.url + path, params=params, data=data,
-                                      json=json_data, headers=headers)
+    def __init__(self, access_token=None, session=None, timeout=10):
+        """
+        Parameters
+        ----------
+        access_token : str
+            Facebook Graph API access token.
+        session: aiohttp.ClientSession, optional
+            An aiohttp.ClientSession instance to be used for making requests.
+        timeout: int, optional
+            timeout for API requests.
+        """
 
+        self.access_token = access_token  #: str: API access token
 
-class Messenger(Graph):
+        self.http_headers = {'Content-Type': 'application/json'}
+        #: dict: default HTTP headers
 
-    def __init__(self, access_token=None, version='2.10', url='https://graph.facebook.com',
-                 async_timeout=10):
-        super().__init__(access_token=access_token, version=version, url=url,
-                         async_timeout=async_timeout)
-        self.default_user_profile_fields = ['first_name', 'last_name', 'profile_pic',
-                                            'locale', 'timezone', 'gender',
-                                            'is_payment_enabled', 'last_ad_referral']
+        self.async_timeout = timeout  #: int: timeout for HTTP requests
 
-    def update_profile(self, data):
-        response = asyncio.ensure_future(self._update_profile(data))
-        response.add_done_callback(log_response)
-        return response
+        self.session = session  #: aiohttp.ClientSession: Aiohttp session.
 
-    def get_user_profile(self, psid, fields=None):
-        response = asyncio.ensure_future(self._get_user_profile(psid, fields))
-        response.add_done_callback(log_response)
-        return response
+    async def request(self, method, path, session=None, **kwargs):
+        """Make an HTTP request to the API
 
-    def send_message(self, data):
-        response = asyncio.ensure_future(self._send_message(data))
-        response.add_done_callback(log_response)
-        return response
+        Parameters
+        ----------
+        method : str
+            HTTP method
+        path : str
+            API endpoint
+        session : ClientSession, optional
+            An aiohttp.ClientSession to be used for making the request.
+        \*\*kwargs
+            Keyword arguments to be passed to aiohttp request. For more info check
+            http://aiohttp.readthedocs.io/en/stable/client_reference.html#aiohttp.ClientSession.request
+        """
+        _session = session or self.session
 
-    def pass_thread_control(self, data):
-        response = asyncio.ensure_future(self._pass_thread_control(data))
-        response.add_done_callback(log_response)
-        return response
+        kwargs['params'] = kwargs.get('params', {})
+        kwargs['params']['access_token'] = self.access_token
 
-    async def _update_profile(self, data):
-        async with aiohttp.ClientSession() as session:
-            return await self.post(
-                session,
-                '/me/messenger_profile',
-                params={'access_token': self.access_token},
-                json_data=data)
+        if not kwargs.get('headers'):
+            kwargs['headers'] = self.http_headers
 
-    async def _get_user_profile(self, psid, fields=None):
-        if not fields:
-            fields = self.default_user_profile_fields
-        async with aiohttp.ClientSession() as session:
-            return await self.get(
-                session,
-                '/{}'.format(psid),
-                params={'access_token': self.access_token, 'fields': ','.join(fields)})
+        async with _session or aiohttp.ClientSession() as _session:
+            async with async_timeout.timeout(self.async_timeout):
+                async with _session.request(
+                        method, self.__class__.URL + path, **kwargs) as response:
+                    if response.status < 400:
+                        return response
+                    else:
+                        message = await response.text()
+                        raise GraphAPIException(message, response=response)
 
-    async def _send_message(self, data):
-        async with aiohttp.ClientSession() as session:
-            return await self.post(
-                session,
-                '/me/messages',
-                params={'access_token': self.access_token},
-                json_data=data)
+    async def get(self, path, session=None, **kwargs):
+        """Make a HTTP GET request to the API.
 
-    async def _pass_thread_control(self, data):
-        async with aiohttp.ClientSession() as session:
-            return await self.post(
-                session,
-                '/me/pass_thread_control',
-                params={'access_token': self.access_token},
-                json_data=data)
+        A wrapper to :func:`~aiofb.api.GraphAPI.request` for GET requests.
+        """
+        return await self.request('GET', path, session, **kwargs)
+
+    async def post(self, path, session=None, **kwargs):
+        """Make a HTTP POST request to the API.
+
+        A wrapper to :func:`~aiofb.api.GraphAPI.request` for POST requests.
+        """
+        return await self.request('POST', path, session, **kwargs)
 
 
-async def _messenger_update_profile(access_token, data):
-    """Update the Facebook messenger profile"""
-    messenger = Messenger(access_token)
-    task = messenger.update_profile(data)
-    return await task
+class Messenger(GraphAPI):
+    """Messenger Platform API wrapper.
 
+    This class provides some additional for accessing Messenger API
+    a bit more conveniently
+    """
 
-def messenger_update_profile(access_token, data):
-    """Update the Facebook messenger profile"""
-    return asyncio.get_event_loop().run_until_complete(_messenger_update_profile(access_token, data))
+    #: list of str: Default user profile properties to be requested
+    DEFAULT_USER_PROFILE_FIELDS = [
+        'first_name', 'last_name', 'profile_pic', 'locale', 'timezone',
+        'gender', 'is_payment_enabled', 'last_ad_referral'
+    ]
 
+    async def update_profile(self, data, session=None):
+        """Update bot's Messenger profile properties.
 
-async def _log_response(task):
-    response = task.result()
-    body = await response.text()
-    if response.status >= 400:
-        logging.error('{0} {1} {2}'.format(response.status, response.url, body))
-    else:
-        logging.info('{0} {1} {2}'.format(response.status, response.url, body))
+        Sets the values of one or more Messenger Profile properties.
+        Only properties set in the request body will be overwritten.
 
+        To set or update Messenger Profile properties you must have the
+        'Administrator' role for the Page associated with the bot.
 
-def log_response(task):
-    asyncio.ensure_future(_log_response(task))
+        https://developers.facebook.com/docs/graph-api/reference/page/messenger_profile#post
+
+        Parameters
+        ----------
+        data : dict
+            data for the update
+        """
+        return await self.post(
+            '/me/messenger_profile',
+            session=session,
+            json=data
+        )
+
+    async def get_user_profile(self, psid, fields=None, session=None):
+        """Retrieve user profile information using PSID.
+
+        https://developers.facebook.com/docs/messenger-platform/identity/user-profile
+
+        Parameters
+        ----------
+        psid : str
+            User PSID
+        fields : list
+            List of field to be retieved. If not provided
+            ``Messenger.DEFAULT_USER_PROFILE_FIELDS`` will be used.
+        """
+        _fields = fields or self.__class__.DEFAULT_USER_PROFILE_FIELDS
+        return await self.get(
+            '/{}'.format(psid),
+            session=session,
+            params={'fields': ','.join(_fields)}
+        )
+
+    async def send_message(self, data, session=None):
+        """Send messages to user
+
+        This may include text, attachments, structured message templates,
+        sender actions, and more.
+
+        https://developers.facebook.com/docs/messenger-platform/reference/send-api
+
+        Parameters
+        ----------
+        data : dict
+            Message data.
+        """
+        return await self.post(
+            '/me/messages',
+            session=session,
+            json=data
+        )
+
+    async def pass_thread_control(self, data, session=None):
+        """Pass thread control from your app to another app.
+
+        https://developers.facebook.com/docs/messenger-platform/reference/handover-protocol/pass-thread-control
+
+        Parameters
+        ----------
+        data : dict
+            Data for the handover.
+        """
+        return await self.post(
+            '/me/pass_thread_control',
+            session=session,
+            json=data
+        )

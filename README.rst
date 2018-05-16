@@ -2,7 +2,6 @@
 aiofb
 =====
 
-
 .. image:: https://img.shields.io/pypi/v/aiofb.svg
         :target: https://pypi.python.org/pypi/aiofb
 
@@ -13,24 +12,43 @@ aiofb
         :target: https://aiofb.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
+A thin asynchronous Python wrapper for Facebook graph API.
+
+This library requires Python 3.5+
+
+Installation
+-------------
+Using pip
+
+.. code-block:: console
+
+    $ pip install tarakimu
 
 
+Basic usage
+------------
+Example
 
-Asyncio Python client for Facebook API
+.. code-block:: python
 
+    import asyncio
+    import aiofb
 
-* Free software: BSD license
+    # initialize Graph API
+    graph = aiofb.GraphAPI(access_token='YOUR_ACCESS_TOKEN')
 
+    async def get_something():
+        """Makes a request to some-endpoint."""
+        return await graph.get('/{some-endpoint}')
 
-Features
---------
+    # Get event loop
+    loop = asyncio.get_event_loop()
 
-* TODO
+    # Run it. Usually GraphAP methods return `aiohttp.ClientResponse` object
+    response = loop.run_until_complete(get_something())
 
-Credits
--------
+    # Get payload from response
+    payload = loop.run_until_complete(response.json())
 
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
-
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+More info about aiohttp.ClientResponse can be found at
+http://aiohttp.readthedocs.io/en/stable/client_reference.html#response-object

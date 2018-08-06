@@ -22,7 +22,7 @@ Using pip
 
 .. code-block:: console
 
-    $ pip install tarakimu
+    $ pip install aiofb
 
 
 Basic usage

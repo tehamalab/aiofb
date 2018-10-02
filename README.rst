@@ -35,10 +35,10 @@ Example
     import aiofb
 
     # initialize Graph API
-    graph = aiofb.GraphAPI(access_token='YOUR_ACCESS_TOKEN')
+    fb = aiofb.GraphAPI(access_token='YOUR_ACCESS_TOKEN')
 
     # Get an event loop
     loop = asyncio.get_event_loop()
 
     # Get results
-    data = loop.run_until_complete(graph.get('/{some-endpoint}'))
+    data = loop.run_until_complete(fb.get('/{some-endpoint}'))

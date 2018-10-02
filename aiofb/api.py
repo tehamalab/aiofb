@@ -62,7 +62,7 @@ class GraphAPI:
                 async with _session.request(
                         method, self.__class__.URL + path, **kwargs) as response:
                     if response.status < 400:
-                        return response
+                        return await response.json()
                     else:
                         message = await response.text()
                         raise GraphAPIException(message, response=response)

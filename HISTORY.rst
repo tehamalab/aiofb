@@ -19,7 +19,7 @@ History
 ------------------
 * Return raw python data decoded from json response instead of ``aiohttp.ClientResponse`` object.
 
-0.1.2 (2019-01-11)
+0.1.3 (2019-01-11)
 ------------------
 * Change default Messenger user profile fields to name,first_name,last_name and profile_pic
   to reflect new Messenger API policy.

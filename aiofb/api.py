@@ -90,10 +90,7 @@ class Messenger(GraphAPI):
     """
 
     #: list of str: Default user profile properties to be requested
-    DEFAULT_USER_PROFILE_FIELDS = [
-        'first_name', 'last_name', 'profile_pic', 'locale', 'timezone',
-        'gender', 'is_payment_enabled', 'last_ad_referral'
-    ]
+    DEFAULT_USER_PROFILE_FIELDS = ['name', 'first_name', 'last_name', 'profile_pic']
 
     async def update_profile(self, data, session=None):
         """Update bot's Messenger profile properties.

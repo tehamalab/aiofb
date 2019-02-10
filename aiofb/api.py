@@ -168,3 +168,19 @@ class Messenger(GraphAPI):
             session=session,
             json=data
         )
+
+    async def take_thread_control(self, data, session=None):
+        """Take thread control from another app.
+
+        https://developers.facebook.com/docs/messenger-platform/handover-protocol/take-thread-control
+
+        Parameters
+        ----------
+        data : dict
+            Data for the handover.
+        """
+        return await self.post(
+            '/me/take_thread_control',
+            session=session,
+            json=data
+        )

@@ -23,3 +23,7 @@ History
 ------------------
 * Change default Messenger user profile fields to name,first_name,last_name and profile_pic
   to reflect new Messenger API policy.
+
+0.1.3 (2019-02-10)
+------------------
+* Add method for taking Messebger thread control (``messenger.take_thread_control(data, session=None))``)
